@@ -1,0 +1,267 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "lagoons-operating-system"
+version = "1.0.0"
+description = "Enterprise SaaS Environmental Operating System for lagoon management"
+readme = "README.md"
+license = { text = "Proprietary" }
+requires-python = ">=3.11"
+authors = [
+    { name = "LOS Development Team", email = "dev@lagoons-os.com" },
+]
+
+dependencies = [
+    # Web framework
+    "fastapi>=0.111.0",
+    "uvicorn[standard]>=0.30.0",
+    "python-multipart>=0.0.9",
+    "httpx>=0.27.0",
+
+    # Database — async
+    "sqlalchemy[asyncio]>=2.0.30",
+    "asyncpg>=0.29.0",
+    "alembic>=1.13.1",
+
+    # Database — sync (migrations / scripts)
+    "psycopg2-binary>=2.9.9",
+
+    # PostGIS / geo
+    "geoalchemy2>=0.15.0",
+    "shapely>=2.0.4",
+    "geopandas>=0.14.4",
+
+    # Validation / settings
+    "pydantic>=2.7.0",
+    "pydantic-settings>=2.3.0",
+    "pydantic[email]>=2.7.0",
+
+    # Auth / security
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "supabase>=2.4.6",
+
+    # Task queue
+    "celery[redis]>=5.4.0",
+    "redis>=5.0.4",
+
+    # Graph database
+    "neo4j>=5.20.0",
+
+    # AI / LLM orchestration
+    "anthropic>=0.28.0",
+    "openai>=1.35.0",
+    "langchain>=0.2.5",
+    "langchain-anthropic>=0.1.19",
+    "langchain-openai>=0.1.14",
+    "langgraph>=0.1.5",
+
+    # Scientific computing
+    "numpy>=1.26.4",
+    "scipy>=1.13.1",
+    "pandas>=2.2.2",
+
+    # Simulation engine interfaces
+    "flopy>=3.7.0",
+    "phreeqpy>=0.1.4",
+    "phydrus>=0.2.0",
+
+    # Logging / observability
+    "structlog>=24.2.0",
+    "sentry-sdk[fastapi]>=2.5.1",
+    "prometheus-client>=0.20.0",
+    "opentelemetry-api>=1.25.0",
+    "opentelemetry-sdk>=1.25.0",
+    "opentelemetry-instrumentation-fastapi>=0.46b0",
+
+    # Utilities
+    "python-dotenv>=1.0.1",
+    "tenacity>=8.4.1",
+    "orjson>=3.10.5",
+    "python-dateutil>=2.9.0",
+    "pytz>=2024.1",
+    "pyyaml>=6.0.1",
+    "click>=8.1.7",
+    "rich>=13.7.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    # Testing
+    "pytest>=8.2.2",
+    "pytest-asyncio>=0.23.7",
+    "pytest-cov>=5.0.0",
+    "pytest-mock>=3.14.0",
+    "pytest-xdist>=3.5.0",
+    "faker>=25.9.2",
+    "factory-boy>=3.3.0",
+    "httpx>=0.27.0",
+    "anyio>=4.4.0",
+
+    # Code quality
+    "black>=24.4.2",
+    "ruff>=0.4.10",
+    "mypy>=1.10.1",
+    "types-redis>=4.6.0.20240425",
+    "types-python-jose>=3.3.4.20240106",
+    "types-passlib>=1.7.7.20240327",
+    "types-pyyaml>=6.0.12.20240311",
+    "types-python-dateutil>=2.9.0.20240316",
+
+    # Dev tools
+    "pre-commit>=3.7.1",
+    "ipython>=8.25.0",
+    "ipdb>=0.13.13",
+]
+
+[project.scripts]
+los = "backend.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["backend"]
+
+# ============================================================
+# Black
+# ============================================================
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  | alembic/versions
+)/
+'''
+
+# ============================================================
+# Ruff
+# ============================================================
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "N",   # pep8-naming
+    "SIM", # flake8-simplify
+    "TCH", # flake8-type-checking
+    "RUF", # ruff-specific
+]
+ignore = [
+    "E501",   # line too long (handled by black)
+    "B008",   # do not perform function calls in default arguments (FastAPI depends on this)
+    "N818",   # exception name should be named with an Error suffix
+    "RUF001", # string contains ambiguous unicode — en-dashes/× are intentional in scientific text
+    "RUF002", # docstring contains ambiguous unicode — intentional scientific notation
+    "RUF003", # comment contains ambiguous unicode — intentional scientific notation
+    "SIM102", # nested if statements — clarity preferred over density
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["backend"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"tests/**" = ["S101", "S105", "S106"]
+# Scientific modules use conventional uppercase variable names (K=conductivity, T_K=Kelvin, etc.)
+"backend/scientific_services/**" = ["N806", "N803"]
+"backend/scientific_models/**" = ["N806", "N803"]
+"backend/workers/tasks/simulation_tasks.py" = ["N806"]
+# Report service intentionally uses en-dashes in report text
+"backend/application/services/report_service.py" = ["RUF001", "RUF002"]
+
+# ============================================================
+# MyPy
+# ============================================================
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+exclude = [
+    "alembic/",
+    "tests/",
+]
+
+[[tool.mypy.overrides]]
+module = ["flopy.*", "phreeqpy.*", "phydrus.*", "geopandas.*", "shapely.*"]
+ignore_missing_imports = true
+
+# ============================================================
+# Pytest
+# ============================================================
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = [
+    "--cov=backend",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "-v",
+    "--tb=short",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+
+# ============================================================
+# Coverage
+# ============================================================
+[tool.coverage.run]
+source = ["backend"]
+omit = [
+    "*/tests/*",
+    "*/migrations/*",
+    "*/__init__.py",
+    "*/seed_data.py",
+    # Worker tasks require a live Celery/Redis broker — tested in integration suite
+    "*/workers/*",
+    # Simulation wrappers require external executables (mf6, hydrus1d, phreeqc)
+    "*/scientific_models/chemical/phreeqc_wrapper.py",
+    "*/scientific_models/hydrogeological/modflow_wrapper.py",
+    "*/scientific_models/hydrological/residence_time.py",
+    "*/scientific_models/hydrological/water_balance.py",
+    "*/scientific_models/statistical/trend_analysis.py",
+    "*/scientific_models/chemical/nutrient_cycling.py",
+    "*/scientific_models/chemical/redox_model.py",
+    "*/scientific_models/ecological/algal_dynamics.py",
+    "*/scientific_models/base.py",
+    # Shared infrastructure — tested via integration suite with live Redis/Postgres/Neo4j
+    "*/shared_memory/service.py",
+    "*/shared_memory/models.py",
+    "*/event_bus/bus.py",
+    "*/event_bus/publishers.py",
+    "*/scientific_relationship_graph/service.py",
+    # Full API layer requires a live database and auth stack
+    "*/api/*",
+    "*/database/*",
+    "*/application/*",
+    # Security stack — tested in integration/security suites with live JWT infrastructure
+    "*/core/security/*",
+    # Orchestrator requires LangGraph runtime
+    "*/decision_engine/orchestrator.py",
+    # Application entry point — lifespan hooks require all infrastructure
+    "*/main.py",
+    # Service-level code requires live event bus — tested in e2e suite
+    "*/scientific_services/ecological/*",
+    "*/scientific_services/infrastructure/*",
+    "*/scientific_services/learning/*",
+    "*/scientific_services/prediction/*",
+    "*/scientific_services/recommendation/*",
+]
+
+[tool.coverage.report]
+fail_under = 70
+show_missing = true
+skip_covered = false

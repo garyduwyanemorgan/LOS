@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+    --radius: 0.5rem;
+
+    /* LOS scientific colour palette */
+    --color-do-critical: 0 84% 60%;
+    --color-do-low: 38 92% 50%;
+    --color-do-good: 142 71% 45%;
+    --color-bloom-risk: 271 81% 56%;
+    --color-orp-anaerobic: 0 84% 60%;
+    --color-orp-suboxic: 38 92% 50%;
+    --color-orp-oxic: 142 71% 45%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Scientific data displays */
+  .scientific-value {
+    @apply font-mono tabular-nums;
+  }
+
+  /* Confidence indicator colours */
+  .confidence-high {
+    @apply text-emerald-400;
+  }
+
+  .confidence-medium {
+    @apply text-amber-400;
+  }
+
+  .confidence-low {
+    @apply text-red-400;
+  }
+
+  /* Loop status colours */
+  .loop-healthy {
+    @apply text-emerald-400 bg-emerald-400/10;
+  }
+
+  .loop-warning {
+    @apply text-amber-400 bg-amber-400/10;
+  }
+
+  .loop-critical {
+    @apply text-red-400 bg-red-400/10;
+  }
+
+  .loop-unknown {
+    @apply text-slate-400 bg-slate-400/10;
+  }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-slate-900;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-600 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-500;
+  }
+}
+
+@layer utilities {
+  /* Plotly chart container */
+  .plotly-chart {
+    @apply w-full;
+  }
+
+  /* Animated pulse for live data indicators */
+  .live-indicator {
+    @apply animate-pulse;
+  }
+
+  /* Data table monospace numbers */
+  .data-cell {
+    @apply font-mono text-sm tabular-nums;
+  }
+}
