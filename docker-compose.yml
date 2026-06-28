@@ -171,7 +171,7 @@ services:
       - los_network
     depends_on:
       - redis
-    command: celery -A workers.celery_app beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    command: celery -A workers.celery_app beat --loglevel=info
 
   # ──────────────────────────────────────────────
   # Long-running simulations worker (separate queue)
