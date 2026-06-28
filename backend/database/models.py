@@ -48,7 +48,7 @@ class Organisation(Base):
     slug: Mapped[str] = mapped_column(String(100), nullable=False)
     subscription_tier: Mapped[str] = mapped_column(String(50), nullable=False, default="starter")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    metadata: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    extra_metadata: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
 
@@ -156,7 +156,7 @@ class Sensor(Base):
     serial_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="active")
-    metadata: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    extra_metadata: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
 
@@ -200,7 +200,7 @@ class Observation(Base):
     source: Mapped[str] = mapped_column(String(50), nullable=False, default="sensor")
     quality_flag: Mapped[str] = mapped_column(String(20), nullable=False, default="good")
     confidence: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
-    metadata: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    extra_metadata: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utcnow)
 
     lagoon: Mapped[Lagoon] = relationship("Lagoon", back_populates="observations")
