@@ -17,6 +17,7 @@ const PRIORITY_ICONS: Record<string, React.ReactNode> = {
   critical: <AlertTriangle className="h-3.5 w-3.5 text-red-500 shrink-0" />,
   high: <Zap className="h-3.5 w-3.5 text-orange-500 shrink-0" />,
   medium: <Activity className="h-3.5 w-3.5 text-amber-500 shrink-0" />,
+  normal: <Activity className="h-3.5 w-3.5 text-amber-500 shrink-0" />,
   low: <Info className="h-3.5 w-3.5 text-blue-400 shrink-0" />,
   background: <Info className="h-3.5 w-3.5 text-slate-400 shrink-0" />,
 }

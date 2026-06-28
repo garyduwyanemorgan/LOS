@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useLagoonStore } from '@/stores/lagoon.store'
-import { api } from '@/lib/api'
+import { api, observationApi } from '@/lib/api'
 import { TimeSeriesChart } from '@/components/charts/TimeSeriesChart'
 import { WaterQualityRadar } from '@/components/charts/WaterQualityRadar'
 import { LoopInteractionDiagram } from '@/components/charts/LoopInteractionDiagram'
@@ -15,14 +15,14 @@ const PARAMETERS = [
   { value: 'dissolved_oxygen', label: 'Dissolved Oxygen', unit: 'mg/L' },
   { value: 'orp', label: 'ORP / Redox', unit: 'mV' },
   { value: 'ph', label: 'pH', unit: '' },
-  { value: 'electrical_conductivity', label: 'Electrical Conductivity', unit: 'μS/cm' },
-  { value: 'temperature', label: 'Water Temperature', unit: '°C' },
+  { value: 'conductivity', label: 'Electrical Conductivity', unit: 'μS/cm' },
+  { value: 'water_temperature', label: 'Water Temperature', unit: '°C' },
   { value: 'turbidity', label: 'Turbidity', unit: 'NTU' },
   { value: 'chlorophyll_a', label: 'Chlorophyll-a', unit: 'μg/L' },
-  { value: 'total_nitrogen', label: 'Total Nitrogen', unit: 'mg/L' },
-  { value: 'total_phosphorus', label: 'Total Phosphorus', unit: 'mg/L' },
-  { value: 'ammonia', label: 'Ammonia-N', unit: 'mg/L' },
-  { value: 'nitrate', label: 'Nitrate-N', unit: 'mg/L' },
+  { value: 'tn_mg_l', label: 'Total Nitrogen', unit: 'mg/L' },
+  { value: 'tp_mg_l', label: 'Total Phosphorus', unit: 'mg/L' },
+  { value: 'nh4_mg_l', label: 'Ammonia-N', unit: 'mg/L' },
+  { value: 'no3_mg_l', label: 'Nitrate-N', unit: 'mg/L' },
 ]
 
 const TIME_WINDOWS = [
@@ -38,13 +38,17 @@ export default function ScientificWorkspace() {
   const [timeWindow, setTimeWindow] = useState('72')
 
   const { data: observations, isLoading } = useQuery({
-    queryKey: ['observations', selectedLagoon?.id, selectedParam, timeWindow],
-    queryFn: () =>
-      api.observations.getRecent(selectedLagoon!.id, {
-        parameters: [selectedParam],
-        hours: parseInt(timeWindow),
-        limit: 2000,
-      }),
+    queryKey: ['timeseries', selectedLagoon?.id, selectedParam, timeWindow],
+    queryFn: () => {
+      const now = new Date()
+      const start = new Date(now.getTime() - parseInt(timeWindow) * 3600 * 1000)
+      return observationApi.getTimeSeries(
+        selectedLagoon!.id,
+        selectedParam,
+        start.toISOString(),
+        now.toISOString(),
+      )
+    },
     enabled: !!selectedLagoon,
   })
 
@@ -117,10 +121,15 @@ export default function ScientificWorkspace() {
             </CardHeader>
             <CardContent>
               <TimeSeriesChart
-                series={observations && (observations as any).data
+                series={observations && observations.length > 0
                   ? [{
                       name: paramConfig?.label ?? selectedParam,
-                      data: (observations as any).data ?? [],
+                      data: observations.map((o) => ({
+                        timestamp: o.timestamp,
+                        value: o.value,
+                        confidence: o.confidence,
+                        quality_flag: o.quality_flag,
+                      })),
                       unit: paramConfig?.unit ?? '',
                     }]
                   : []}
@@ -146,8 +155,7 @@ export default function ScientificWorkspace() {
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               {['good', 'suspect', 'bad', 'missing'].map(flag => {
-                const obs = (observations as any)?.data ?? []
-                const count = (obs as Array<{ quality_flag: string }>).filter(o => o.quality_flag === flag).length
+                const count = (observations ?? []).filter(o => o.quality_flag === flag).length
                 return (
                   <div key={flag} className="flex justify-between">
                     <span className="capitalize text-muted-foreground">{flag}</span>

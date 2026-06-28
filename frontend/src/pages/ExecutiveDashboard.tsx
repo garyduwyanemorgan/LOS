@@ -31,6 +31,8 @@ import {
 import { useApproveRecommendation, useRejectRecommendation } from '@/hooks/useRecommendations'
 import { useRealtimeEvents } from '@/hooks/useRealtimeEvents'
 import { EventFeed } from '@/components/shared/EventFeed'
+import { useQuery } from '@tanstack/react-query'
+import { api } from '@/lib/api'
 
 // Mock 30-day trend data (replace with real data when API supports it)
 function generate30DayTrend() {
@@ -56,7 +58,18 @@ export default function ExecutiveDashboard() {
   const { data: objectivesData } = useObjectives(selectedLagoonId)
   const { data: performance } = usePerformance(selectedLagoonId, 30)
   const { data: recommendationsData } = usePendingRecommendations(selectedLagoonId)
-  const { events } = useRealtimeEvents({ maxEvents: 5 })
+  const { events: liveEvents } = useRealtimeEvents({ maxEvents: 5 })
+  const { data: historicalEvents } = useQuery({
+    queryKey: ['events-recent', selectedLagoonId],
+    queryFn: () => api.events.listByLagoon(selectedLagoonId!, { limit: 5 }),
+    enabled: !!selectedLagoonId,
+    refetchInterval: 60_000,
+  })
+  const liveIds = new Set(liveEvents.map((e) => e.id))
+  const events = [
+    ...liveEvents,
+    ...(historicalEvents ?? []).filter((e) => !liveIds.has(e.id)),
+  ].slice(0, 5)
   const approveMutation = useApproveRecommendation()
   const rejectMutation = useRejectRecommendation()
 
@@ -71,7 +84,7 @@ export default function ExecutiveDashboard() {
           <h1 className="text-2xl font-bold text-[#0D2137]">Executive Dashboard</h1>
           <p className="text-slate-500 text-sm mt-0.5">
             {selectedLagoon
-              ? `${selectedLagoon.name} — ${selectedLagoon.location.city}, ${selectedLagoon.location.country}`
+              ? `${selectedLagoon.name}${selectedLagoon.location?.city ? ` — ${selectedLagoon.location.city}, ${selectedLagoon.location.country}` : ''}`
               : 'Select a lagoon to view data'}
           </p>
         </div>

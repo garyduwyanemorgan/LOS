@@ -4,13 +4,11 @@ All user-facing validation and serialisation lives here.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from datetime import datetime
+from typing import Any
+from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
-
-if TYPE_CHECKING:
-    from datetime import datetime
-    from uuid import UUID
 
 # ── Common ───────────────────────────────────────────────────────────────────
 
@@ -28,6 +26,11 @@ class HealthStatus(BaseModel):
 
 
 # ── Auth ─────────────────────────────────────────────────────────────────────
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -109,9 +112,11 @@ class LagoonUpdate(BaseModel):
 class LagoonResponse(BaseModel):
     id: UUID
     name: str
+    slug: str | None = None
     description: str | None = None
     latitude: float
     longitude: float
+    location: dict[str, Any] | None = None  # {lat, lng, city, country}
     surface_area_m2: float
     volume_m3: float
     max_depth_m: float | None = None
@@ -121,7 +126,7 @@ class LagoonResponse(BaseModel):
     salinity_type: str
     is_active: bool
     org_id: UUID
-    created_by: UUID
+    created_by: UUID | None = None
     created_at: datetime
     updated_at: datetime
     metadata: dict[str, Any] | None = None
@@ -130,26 +135,31 @@ class LagoonResponse(BaseModel):
 
 
 class OperatingObjectiveCreate(BaseModel):
-    parameter: str = Field(min_length=1, max_length=100)
-    target: float
-    tolerance: float = Field(ge=0.0)
+    name: str = Field(min_length=1, max_length=255)
     objective_type: str = Field(
         default="water_quality",
         pattern="^(water_quality|ecological|infrastructure|compliance|operational)$",
     )
-    priority: int = Field(default=5, ge=1, le=10)
     description: str | None = Field(default=None, max_length=500)
+    target_value: float | None = None
+    current_value: float | None = None
+    unit: str | None = Field(default=None, max_length=50)
+    priority: int = Field(default=5, ge=1, le=10)
+    weight: float = Field(default=1.0, ge=0.0, le=1.0)
 
 
 class OperatingObjectiveResponse(BaseModel):
     id: UUID
     lagoon_id: UUID
-    parameter: str
-    target: float
-    tolerance: float
     objective_type: str
-    priority: int
+    name: str
     description: str | None = None
+    target_value: float | None = None
+    current_value: float | None = None
+    unit: str | None = None
+    priority: int
+    weight: float = 1.0
+    is_active: bool = True
     created_at: datetime
     updated_at: datetime
 
@@ -317,14 +327,15 @@ class EventResponse(BaseModel):
     id: UUID
     lagoon_id: UUID
     event_type: str
-    severity: str
+    loop: str
+    source: str
+    priority: str
+    confidence: float
     payload: dict[str, Any]
-    source_loop: str | None = None
+    correlation_id: UUID | None = None
     created_at: datetime
-    acknowledged_at: datetime | None = None
-    acknowledged_by: UUID | None = None
 
-    model_config = {"from_attributes": True}
+    model_config = {"from_attributes": True, "populate_by_name": True}
 
 
 # ── Recommendation ────────────────────────────────────────────────────────────
@@ -340,18 +351,24 @@ class RecommendationRejectRequest(BaseModel):
 class RecommendationResponse(BaseModel):
     id: UUID
     lagoon_id: UUID
-    title: str
-    description: str
-    rationale: str | None = None
-    intervention_type: str
-    priority: int
-    estimated_impact: dict[str, Any] | None = None
+    action: str
+    action_category: str
+    scientific_reason: str
+    contributing_loops: list[str] = Field(default_factory=list)
+    evidence: list[dict[str, Any]] = Field(default_factory=list)
+    confidence: float = 0.5
+    priority: str = "normal"
+    expected_outcome: str = ""
+    expected_timeframe_days: int | None = None
+    alternative_options: list[dict[str, Any]] = Field(default_factory=list)
+    operating_objective_ids: list[Any] = Field(default_factory=list)
     status: str
-    created_by_loop: str | None = None
-    reviewed_by: UUID | None = None
-    review_notes: str | None = None
+    created_by_system: bool = True
+    approved_by: UUID | None = None
+    approved_at: datetime | None = None
+    rejection_reason: str | None = None
     created_at: datetime
-    reviewed_at: datetime | None = None
+    updated_at: datetime
 
     model_config = {"from_attributes": True}
 
