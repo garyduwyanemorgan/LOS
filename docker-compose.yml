@@ -97,7 +97,7 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      # DATABASE_URL comes from .env (Supabase) — not overridden here
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-los_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-los}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
       CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/2
@@ -106,11 +106,15 @@ services:
       NEO4J_PASSWORD: ${NEO4J_PASSWORD}
     volumes:
       - ./backend:/app
+      - ./alembic:/alembic
+      - ./alembic.ini:/alembic.ini
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     networks:
       - los_network
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
       neo4j:
