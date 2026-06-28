@@ -54,7 +54,7 @@ const trendData = generate30DayTrend()
 
 export default function ExecutiveDashboard() {
   const navigate = useNavigate()
-  const { selectedLagoonId, selectedLagoon, loops, chemical, ecological, healthScore } = useLagoon()
+  const { selectedLagoonId, selectedLagoon, loops, chemical, ecological, healthScore, systemState } = useLagoon()
   const { data: objectivesData } = useObjectives(selectedLagoonId)
   const { data: performance } = usePerformance(selectedLagoonId, 30)
   const { data: recommendationsData } = usePendingRecommendations(selectedLagoonId)
@@ -117,7 +117,7 @@ export default function ExecutiveDashboard() {
         <div className="lg:col-span-4 grid grid-cols-2 xl:grid-cols-4 gap-4">
           <MetricCard
             title="Water Quality Index"
-            value={performance?.water_quality_index ?? null}
+            value={systemState?.wqi ?? null}
             unit="/100"
             precision={0}
             trend={
@@ -128,9 +128,9 @@ export default function ExecutiveDashboard() {
                   : 'stable'
             }
             status={
-              (performance?.water_quality_index ?? 0) >= 70
+              (systemState?.wqi ?? 0) >= 70
                 ? 'good'
-                : (performance?.water_quality_index ?? 0) >= 50
+                : (systemState?.wqi ?? 0) >= 50
                   ? 'warning'
                   : 'critical'
             }
@@ -156,13 +156,13 @@ export default function ExecutiveDashboard() {
           />
           <MetricCard
             title="Compliance Score"
-            value={performance?.compliance_score ?? null}
+            value={systemState?.compliance_score ?? null}
             unit="%"
             precision={0}
             status={
-              (performance?.compliance_score ?? 0) >= 90
+              (systemState?.compliance_score ?? 0) >= 90
                 ? 'good'
-                : (performance?.compliance_score ?? 0) >= 70
+                : (systemState?.compliance_score ?? 0) >= 70
                   ? 'warning'
                   : 'critical'
             }

@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     # ── JWT (LOS-internal) ───────────────────────────────────────────────────
     JWT_SECRET_KEY: str = Field(min_length=32)
     JWT_ALGORITHM: str = "HS256"
-    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30, ge=5, le=1440)
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=480, ge=5, le=1440)
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=7, ge=1, le=90)
 
     # ── AI / LLM ─────────────────────────────────────────────────────────────

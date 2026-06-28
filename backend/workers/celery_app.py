@@ -30,6 +30,20 @@ def setup_periodic_tasks(sender: Celery, **kwargs: object) -> None:
     pass  # Defined in celery_config.beat_schedule
 
 
+from celery.signals import worker_ready  # noqa: E402
+
+
+@worker_ready.connect
+def _run_loops_on_startup(sender: object, **kwargs: object) -> None:
+    """Warm up Redis with fresh loop states immediately after worker start."""
+    try:
+        from backend.workers.tasks.scientific_tasks import run_all_scientific_loops
+        run_all_scientific_loops.apply_async(queue='scientific', countdown=5)
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).warning("Startup loop warmup failed: %s", exc)
+
+
 @app.task(bind=True)
 def debug_task(self) -> str:  # type: ignore[type-arg]
     """Simple debug task for health checks."""

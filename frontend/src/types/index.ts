@@ -88,6 +88,8 @@ export interface SystemState {
   chemical: ChemicalState
   ecological: EcologicalState
   infrastructure: InfrastructureState
+  wqi?: number | null
+  compliance_score?: number | null
 }
 
 export interface AlternativeOption {
