@@ -8,9 +8,9 @@ ENV NODE_OPTIONS="--max-old-space-size=4096"
 COPY package.json package-lock.json* ./
 RUN npm ci --frozen-lockfile
 
-# Copy source and build
+# Copy source and build (skip tsc to halve memory — type checking runs in CI)
 COPY . .
-RUN npm run build
+RUN npx vite build
 
 # ── Production image (nginx) ──────────────────────────────────────────────────
 FROM nginx:1.25-alpine AS final
