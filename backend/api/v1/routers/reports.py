@@ -32,18 +32,18 @@ def _get_service(db: DatabaseDep):
 
 @router.get(
     "",
-    summary="List available report types for a lagoon",
+    summary="List generated reports for a lagoon",
 )
 async def list_reports(
     lagoon_id: UUID = Path(...),
     current_user: CurrentUserDep = ...,
-) -> dict:
-    """Return metadata about available report types (no content generated)."""
-    return {
-        "lagoon_id": str(lagoon_id),
-        "available_types": ["executive", "scientific", "compliance", "operational"],
-        "note": "Use POST to generate a report.",
-    }
+    db: DatabaseDep = ...,
+) -> list:
+    """Return all previously generated reports for this lagoon, newest first."""
+    from backend.database.repositories.report_repo import ReportRepository  # type: ignore[import]
+
+    repo = ReportRepository(db)
+    return await repo.list(lagoon_id)
 
 
 @router.post(
@@ -98,13 +98,30 @@ async def generate_report(
             # markdown package optional — fall back to raw
             logger.warning("markdown package not installed; returning raw Markdown")
 
+    # Persist so the list endpoint can return it
+    from backend.database.repositories.report_repo import ReportRepository  # type: ignore[import]
+
+    repo = ReportRepository(db)
+    now = datetime.now(UTC)
+    saved = await repo.create({
+        "lagoon_id": str(lagoon_id),
+        "report_type": body.report_type,
+        "period_days": body.period_days,
+        "format": body.format,
+        "content": content,
+        "status": "completed",
+        "generated_at": now.isoformat(),
+        "generated_by": str(current_user["id"]),
+    })
+
     return ReportResponse(
+        id=UUID(saved["id"]),
         lagoon_id=lagoon_id,
         report_type=body.report_type,
         period_days=body.period_days,
         format=body.format,
         content=content,
-        generated_at=datetime.now(UTC),
+        generated_at=now,
         generated_by=UUID(str(current_user["id"])),
     )
 

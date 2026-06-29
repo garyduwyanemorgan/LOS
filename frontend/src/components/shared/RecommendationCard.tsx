@@ -170,7 +170,7 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
               <p className="text-xs font-semibold text-slate-700 mb-1">Expected Outcome</p>
               <p className="text-xs text-slate-600">{rec.expected_outcome}</p>
               <p className="text-xs text-slate-400 mt-0.5">
-                Timeframe: ~{rec.expected_timeframe_days} days
+                Timeframe: {rec.expected_timeframe_days != null ? `~${rec.expected_timeframe_days} days` : 'Not specified'}
               </p>
             </div>
 
@@ -189,11 +189,13 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
               </div>
             )}
 
-            {rec.alternative_options.length > 0 && (
+            {rec.alternative_options.filter(alt => alt.action?.trim() || alt.reason_not_recommended?.trim()).length > 0 && (
               <div>
                 <p className="text-xs font-semibold text-slate-700 mb-1">Alternatives Considered</p>
                 <div className="space-y-1">
-                  {rec.alternative_options.map((alt, i) => (
+                  {rec.alternative_options
+                    .filter(alt => alt.action?.trim() || alt.reason_not_recommended?.trim())
+                    .map((alt, i) => (
                     <div key={i} className="text-xs text-slate-500 flex items-start gap-1">
                       <span className="text-slate-300 mt-0.5">—</span>
                       <span>

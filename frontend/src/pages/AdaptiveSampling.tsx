@@ -31,7 +31,11 @@ export default function AdaptiveSampling() {
     )
   }
 
-  const sensorCoverage = systemState?.infrastructure?.sensor_coverage_pct ?? 0
+  const activeSensorCount = sensors?.filter((s: any) => s.is_active).length ?? 0
+  const totalSensorCount = sensors?.length ?? 0
+  const sensorCoverage = totalSensorCount > 0
+    ? (activeSensorCount / totalSensorCount) * 100
+    : (systemState?.infrastructure?.sensor_coverage_pct ?? 0)
 
   return (
     <div className="space-y-6 p-6">

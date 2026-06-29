@@ -9,17 +9,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { FileText, Download, Plus, Clock } from 'lucide-react'
 
 const REPORT_TYPES = [
-  { value: 'operational_summary', label: 'Operational Summary' },
-  { value: 'water_quality', label: 'Water Quality Report' },
-  { value: 'ecological_assessment', label: 'Ecological Assessment' },
+  { value: 'executive', label: 'Executive Summary' },
+  { value: 'operational', label: 'Operational Report' },
+  { value: 'scientific', label: 'Scientific Report' },
   { value: 'compliance', label: 'Compliance Report' },
-  { value: 'intervention_effectiveness', label: 'Intervention Effectiveness' },
-  { value: 'monthly_performance', label: 'Monthly Performance' },
 ]
 
 export default function Reports() {
   const { selectedLagoon } = useLagoonStore()
-  const [selectedType, setSelectedType] = useState('operational_summary')
+  const [selectedType, setSelectedType] = useState('executive')
 
   const { data: reports, isLoading, refetch } = useQuery({
     queryKey: ['reports', selectedLagoon?.id],
@@ -71,10 +69,16 @@ export default function Reports() {
             disabled={generateMutation.isPending}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Generate
+            {generateMutation.isPending ? 'Generating...' : 'Generate'}
           </Button>
         </div>
       </div>
+
+      {generateMutation.isError && (
+        <div className="rounded-md bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
+          Failed to generate report. Please try again.
+        </div>
+      )}
 
       {isLoading ? (
         <div className="space-y-3">
@@ -95,7 +99,7 @@ export default function Reports() {
                   <div className="flex items-center gap-2 mt-1">
                     <Clock className="h-3 w-3 text-muted-foreground" />
                     <span className="text-xs text-muted-foreground">
-                      {new Date(report.created_at).toLocaleString()}
+                      {new Date(report.created_at ?? report.generated_at).toLocaleString()}
                     </span>
                   </div>
                 </div>

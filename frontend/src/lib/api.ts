@@ -54,8 +54,7 @@ http.interceptors.response.use(
       if (refreshToken) {
         try {
           const resp = await axios.post(
-            `${import.meta.env.VITE_API_URL || '/api/v1'}/auth/refresh`,
-            { refresh_token: refreshToken }
+            `${import.meta.env.VITE_API_URL || '/api/v1'}/auth/refresh?refresh_token=${encodeURIComponent(refreshToken)}`
           )
           const { access_token } = resp.data as { access_token: string }
           localStorage.setItem('los_access_token', access_token)
@@ -199,8 +198,8 @@ function _parseSystemState(r: any): SystemState {
   return {
     lagoon_id: r.lagoon_id,
     timestamp: r.timestamp ?? new Date().toISOString(),
-    overall_health_score: r.overall_health_score ?? avgConf,
-    overall_confidence: r.overall_confidence ?? avgConf,
+    overall_health_score: r.overall_health_score || avgConf,
+    overall_confidence: r.overall_confidence || avgConf,
     loops,
     chemical,
     ecological,
@@ -340,7 +339,10 @@ export const interventionApi = {
 
 // ─── Report endpoints ──────────────────────────────────────────────────────────
 export const reportApi = {
-  list: (_lagoonId: string): Promise<Report[]> => Promise.resolve([]),
+  list: (lagoonId: string): Promise<Report[]> =>
+    http.get<any>(`/lagoons/${lagoonId}/reports`)
+      .then((r: any) => r?.items ?? r ?? [])
+      .catch(() => [] as Report[]),
   generate: (data: {
     lagoon_id: string
     report_type: string
@@ -424,8 +426,16 @@ export const api = {
   },
   observations: {
     ...observationApi,
-    getRecent: (lagoonId: string, _params: Record<string, unknown>) =>
-      observationApi.getLatest(lagoonId).catch(() => [] as Observation[]),
+    getRecent: async (lagoonId: string, params: Record<string, unknown>) => {
+      const hours = (params?.hours as number) ?? 24
+      const now = new Date()
+      const start = new Date(now.getTime() - hours * 3600 * 1000)
+      const KEY_PARAMS = ['dissolved_oxygen', 'ph', 'orp', 'conductivity', 'chlorophyll_a', 'water_temperature', 'turbidity']
+      const results = await Promise.allSettled(
+        KEY_PARAMS.map(p => observationApi.getTimeSeries(lagoonId, p, start.toISOString(), now.toISOString()))
+      )
+      return results.flatMap(r => r.status === 'fulfilled' ? r.value : [] as Observation[])
+    },
     getLabResults: (lagoonId: string, _params: Record<string, unknown>) =>
       observationApi.getLatest(lagoonId)
         .then((obs) => obs.filter((o) => o.source === 'laboratory'))
@@ -450,8 +460,8 @@ export const api = {
   reports: reportApi,
   simulations: {
     ...simulationApi,
-    getPredictions: (lagoonId: string, _params?: Record<string, unknown>) =>
-      simulationApi.runForecast(lagoonId, 72),
+    getPredictions: (_lagoonId: string, _params?: Record<string, unknown>) =>
+      Promise.resolve(null as any),
   },
   users: userApi,
   auth: authApi,

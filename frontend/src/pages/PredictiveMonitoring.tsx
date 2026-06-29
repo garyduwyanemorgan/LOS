@@ -116,47 +116,71 @@ export default function PredictiveMonitoring() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <BloomProbabilityChart
-            data={(predictions as any)?.bloom_risk_timeseries ?? []}
-            height={240}
-          />
+          {(predictions as any)?.bloom_risk_timeseries?.length > 0 ? (
+            <BloomProbabilityChart
+              data={(predictions as any).bloom_risk_timeseries}
+              height={240}
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground" style={{ height: 240 }}>
+              <p className="text-sm">No forecast model active</p>
+              <p className="text-xs mt-1">
+                Current bloom probability: <span className="font-mono font-semibold text-foreground">{(bloomProb * 100).toFixed(0)}%</span>
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Parameter forecasts */}
       <div className="grid grid-cols-2 gap-4">
         {[
-          { param: 'do_mg_l', label: 'DO Forecast', unit: 'mg/L' },
-          { param: 'bloom_probability', label: 'Bloom Probability Forecast', unit: '%' },
-        ].map(({ param, label, unit }) => (
+          {
+            param: 'do_mg_l',
+            label: 'DO Forecast',
+            unit: 'mg/L',
+            currentValue: systemState?.chemical?.do_mg_l ?? null,
+          },
+          {
+            param: 'bloom_probability',
+            label: 'Bloom Probability Forecast',
+            unit: '%',
+            currentValue:
+              systemState?.ecological?.bloom_probability != null
+                ? systemState.ecological.bloom_probability * 100
+                : null,
+          },
+        ].map(({ param, label, unit, currentValue }) => (
           <Card key={param}>
             <CardHeader>
               <CardTitle className="text-sm font-medium">{label}</CardTitle>
             </CardHeader>
             <CardContent>
-              {predictions ? (
-                <div className="space-y-2">
-                  {(['24h', '48h', '72h'] as const).map(horizon => {
-                    const value = (predictions as any)[`${param}_${horizon}`] as number | null
-                    const confidence = ((predictions as any)[`${param}_${horizon}_confidence`] as number) ?? 0.5
-                    return (
-                      <div key={horizon} className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">+{horizon}</span>
-                        <div className="flex items-center gap-3">
-                          <ConfidenceIndicator confidence={confidence} size="sm" />
-                          <span className="font-mono text-sm">
-                            {value != null ? `${value.toFixed(1)} ${unit}` : '—'}
-                          </span>
-                        </div>
+              <div className="space-y-2">
+                {(['24h', '48h', '72h'] as const).map((horizon) => {
+                  // Use simulation value if available, else naive persistence from current state
+                  const simValue = (predictions as any)?.[`${param}_${horizon}`] as number | null | undefined
+                  const displayValue = simValue != null ? simValue : currentValue
+                  const confidence = ((predictions as any)?.[`${param}_${horizon}_confidence`] as number) ?? 0.5
+                  const isEstimated = simValue == null && displayValue != null
+                  return (
+                    <div key={horizon} className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">+{horizon}</span>
+                      <div className="flex items-center gap-3">
+                        <ConfidenceIndicator confidence={confidence} size="sm" />
+                        <span className="font-mono text-sm">
+                          {displayValue != null
+                            ? `${displayValue.toFixed(1)} ${unit}${isEstimated ? '*' : ''}`
+                            : '—'}
+                        </span>
                       </div>
-                    )
-                  })}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Forecast not available
-                </p>
-              )}
+                    </div>
+                  )
+                })}
+                {currentValue != null && !predictions && (
+                  <p className="text-xs text-muted-foreground mt-2">* Naive persistence estimate — no forecast model active</p>
+                )}
+              </div>
             </CardContent>
           </Card>
         ))}

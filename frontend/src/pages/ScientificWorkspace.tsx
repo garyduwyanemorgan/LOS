@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useLagoonStore } from '@/stores/lagoon.store'
 import { api, observationApi } from '@/lib/api'
@@ -33,7 +33,7 @@ const TIME_WINDOWS = [
 ]
 
 export default function ScientificWorkspace() {
-  const { selectedLagoon } = useLagoonStore()
+  const { selectedLagoon, systemState } = useLagoonStore()
   const [selectedParam, setSelectedParam] = useState('dissolved_oxygen')
   const [timeWindow, setTimeWindow] = useState('72')
 
@@ -58,13 +58,6 @@ export default function ScientificWorkspace() {
     enabled: !!selectedLagoon,
   })
 
-  const { data: systemState } = useQuery({
-    queryKey: ['system-state', selectedLagoon?.id],
-    queryFn: () => api.lagoons.getSystemState(selectedLagoon!.id),
-    enabled: !!selectedLagoon,
-    refetchInterval: 120_000,
-  })
-
   if (!selectedLagoon) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -74,6 +67,20 @@ export default function ScientificWorkspace() {
   }
 
   const paramConfig = PARAMETERS.find(p => p.value === selectedParam)
+
+  const radarParameters = useMemo(() => {
+    if (!systemState) return []
+    const chem = systemState.chemical
+    const eco = systemState.ecological
+    const params: Array<{ parameter: string; current: number | null; target: number; unit: string; maxValue: number }> = [
+      { parameter: 'DO', current: chem?.do_mg_l ?? null, target: 7.0, unit: 'mg/L', maxValue: 15 },
+      { parameter: 'pH', current: chem?.ph ?? null, target: 8.0, unit: '', maxValue: 14 },
+      { parameter: 'ORP', current: chem?.orp_mv != null ? chem.orp_mv + 400 : null, target: 600, unit: 'mV', maxValue: 800 },
+      { parameter: 'Bloom Risk', current: eco?.bloom_probability != null ? (1 - eco.bloom_probability) * 100 : null, target: 90, unit: '%', maxValue: 100 },
+      { parameter: 'Stability', current: eco?.ecological_stability_score != null ? eco.ecological_stability_score * 100 : null, target: 70, unit: '%', maxValue: 100 },
+    ]
+    return params.filter(p => p.current !== null) as Array<{ parameter: string; current: number; target: number; unit: string; maxValue: number }>
+  }, [systemState])
 
   return (
     <div className="space-y-6 p-6">
@@ -145,7 +152,7 @@ export default function ScientificWorkspace() {
               <CardTitle className="text-sm font-medium">System Confidence</CardTitle>
             </CardHeader>
             <CardContent>
-              <ConfidenceGauge value={systemState?.overall_confidence ?? 0} size={150} />
+              <ConfidenceGauge value={systemState?.overall_confidence || 0} size={150} />
             </CardContent>
           </Card>
 
@@ -182,7 +189,7 @@ export default function ScientificWorkspace() {
               <CardDescription>Multi-parameter radar — current conditions vs. targets</CardDescription>
             </CardHeader>
             <CardContent>
-              <WaterQualityRadar parameters={[]} />
+              <WaterQualityRadar parameters={radarParameters} />
             </CardContent>
           </Card>
         </TabsContent>

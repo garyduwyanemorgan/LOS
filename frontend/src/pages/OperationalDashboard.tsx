@@ -196,7 +196,7 @@ export default function OperationalDashboard() {
               { param: 'dissolved_oxygen', label: 'Dissolved Oxygen', unit: 'mg/L' },
               { param: 'ph', label: 'pH', unit: '' },
               { param: 'orp', label: 'ORP', unit: 'mV' },
-              { param: 'electrical_conductivity', label: 'Electrical Conductivity', unit: 'μS/cm' },
+              { param: 'conductivity', label: 'Electrical Conductivity', unit: 'μS/cm' },
             ].map(({ param, label, unit }) => (
               <Card key={param}>
                 <CardHeader>
