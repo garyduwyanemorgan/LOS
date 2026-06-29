@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 
@@ -21,9 +21,6 @@ from backend.api.v1.schemas import (
     SensorResponse,
     SensorUpdate,
 )
-
-if TYPE_CHECKING:
-    from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
@@ -63,13 +60,20 @@ async def create_sensor(
     from backend.database.repositories.sensor_repo import SensorRepository  # type: ignore[import]
 
     repo = SensorRepository(db)
+    data = body.model_dump(exclude_none=True)
+    # Fields not present on the Sensor ORM model go into extra_metadata
+    META_KEYS = {"parameter", "accuracy", "detection_limit", "sampling_interval_s",
+                 "location_description", "latitude", "longitude"}
+    meta = {k: data.pop(k) for k in list(data) if k in META_KEYS}
     record = {
-        **body.model_dump(exclude_none=True),
+        **data,
         "lagoon_id": str(lagoon_id),
-        "created_by": str(current_user["id"]),
         "is_active": True,
+        "metadata": meta,
     }
     created = await repo.create(record)
+    # Merge metadata back so SensorResponse fields are populated
+    created.update(created.pop("metadata", {}) or {})
     return SensorResponse(**created)
 
 

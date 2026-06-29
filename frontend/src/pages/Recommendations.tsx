@@ -32,7 +32,7 @@ export default function Recommendations() {
 
   const approveMutation = useMutation({
     mutationFn: ({ id, notes }: { id: string; notes?: string }) =>
-      api.recommendations.approve(id, { notes }),
+      api.recommendations.approve(selectedLagoon!.id, id, { notes }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['recommendations', selectedLagoon?.id] })
     },
@@ -40,7 +40,7 @@ export default function Recommendations() {
 
   const rejectMutation = useMutation({
     mutationFn: ({ id, reason }: { id: string; reason: string }) =>
-      api.recommendations.reject(id, { reason }),
+      api.recommendations.reject(selectedLagoon!.id, id, { reason }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['recommendations', selectedLagoon?.id] })
     },

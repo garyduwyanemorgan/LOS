@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC
-from typing import TYPE_CHECKING
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 
@@ -21,9 +21,6 @@ from backend.api.v1.schemas import (
     PaginatedInterventions,
     PaginationMeta,
 )
-
-if TYPE_CHECKING:
-    from uuid import UUID
 
 logger = logging.getLogger(__name__)
 

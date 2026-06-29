@@ -92,7 +92,7 @@ export default function AdaptiveSampling() {
                     <div className="flex items-center gap-2 mt-0.5">
                       <MapPin className="h-3 w-3 text-muted-foreground" />
                       <span className="text-xs text-muted-foreground">
-                        {sensor.location_description ?? `Depth: ${sensor.installation_depth_m ?? 0}m`}
+                        {sensor.location_description ?? `Depth: ${sensor.depth_m ?? sensor.installation_depth_m ?? 0}m`}
                       </span>
                     </div>
                   </div>

@@ -79,6 +79,7 @@ class User(Base):
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(String(50), nullable=False, default="VIEWER")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    hashed_password: Mapped[str | None] = mapped_column(String(255), nullable=True)
     last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     preferences: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utcnow)

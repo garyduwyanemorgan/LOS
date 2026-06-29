@@ -3,18 +3,14 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING, Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+import bcrypt
+from fastapi import APIRouter, HTTPException, status
 from jose import jwt
 
-from backend.api.v1.schemas import TokenResponse, UserResponse
+from backend.api.v1.dependencies import CurrentUserDep, DatabaseDep
+from backend.api.v1.schemas import LoginRequest, TokenResponse, UserResponse
 from backend.core.config.settings import settings
-
-if TYPE_CHECKING:
-    from fastapi.security import OAuth2PasswordRequestForm
-
-    from backend.api.v1.dependencies import CurrentUserDep
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +18,6 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 def _create_token(subject: str, expires_delta: timedelta, token_type: str = "access") -> str:
-    """Create a signed JWT."""
     expire = datetime.now(UTC) + expires_delta
     payload = {
         "sub": subject,
@@ -34,33 +29,42 @@ def _create_token(subject: str, expires_delta: timedelta, token_type: str = "acc
 
 
 @router.post("/login", response_model=TokenResponse, summary="Authenticate and receive tokens")
-async def login(
-    form: Annotated[OAuth2PasswordRequestForm, Depends()],
-) -> TokenResponse:
-    """Authenticate via email/password through Supabase and return JWTs.
+async def login(body: LoginRequest, db: DatabaseDep) -> TokenResponse:
+    """Authenticate via email/password against local DB and return JWTs."""
+    from backend.database.repositories.user_repo import UserRepository
 
-    The access token expires in `JWT_ACCESS_TOKEN_EXPIRE_MINUTES`.
-    The refresh token expires in `JWT_REFRESH_TOKEN_EXPIRE_DAYS`.
-    """
+    repo = UserRepository(db)
+    user = await repo.get_by_email_for_auth(body.email)
+
+    credentials_exc = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Incorrect email or password",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    if user is None:
+        logger.warning("Login failed — no user found for %s", body.email)
+        raise credentials_exc
+
+    hashed = user.get("hashed_password") or ""
+    if not hashed:
+        logger.warning("Login failed — no password set for %s", body.email)
+        raise credentials_exc
+
     try:
-        from supabase import create_client  # type: ignore[import]
-
-        supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
-        auth_response = supabase.auth.sign_in_with_password(
-            {"email": form.username, "password": form.password}
-        )
-        if auth_response.user is None:
-            raise ValueError("Invalid credentials")
-
-        user_id = str(auth_response.user.id)
+        password_ok = bcrypt.checkpw(body.password.encode(), hashed.encode())
     except Exception as exc:
-        logger.warning("Login failed for %s: %s", form.username, exc)
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        ) from exc
+        logger.error("bcrypt error for %s: %s", body.email, exc)
+        password_ok = False
 
+    if not password_ok:
+        logger.warning("Login failed — wrong password for %s", body.email)
+        raise credentials_exc
+
+    if not user.get("is_active", True):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is disabled")
+
+    user_id = str(user["id"])
     access_token = _create_token(
         user_id,
         timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES),
@@ -72,7 +76,7 @@ async def login(
         "refresh",
     )
 
-    logger.info("User logged in: %s", form.username)
+    logger.info("User logged in: %s", body.email)
     return TokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
@@ -83,19 +87,7 @@ async def login(
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT, summary="Invalidate session")
 async def logout(current_user: CurrentUserDep) -> None:
-    """Invalidate the current user's Supabase session.
-
-    The LOS JWT is stateless so the client must discard the token.
-    """
-    try:
-        from supabase import create_client  # type: ignore[import]
-
-        supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
-        supabase.auth.sign_out()
-    except Exception as exc:
-        logger.warning("Logout Supabase call failed: %s", exc)
-        # Still return 204 — client should discard tokens regardless
-
+    """Invalidate the current user's session. Client must discard the JWT."""
     logger.info("User logged out: %s", current_user.get("email"))
 
 

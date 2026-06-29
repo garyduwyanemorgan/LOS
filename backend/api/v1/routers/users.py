@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from uuid import UUID
 
+import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 
 from backend.api.v1.dependencies import (
@@ -20,9 +21,6 @@ from backend.api.v1.schemas import (
     UserResponse,
     UserUpdate,
 )
-
-if TYPE_CHECKING:
-    from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
@@ -60,8 +58,6 @@ async def create_user(
 
     Password is hashed before storage; plain text is never persisted.
     """
-    from passlib.context import CryptContext  # type: ignore[import]
-
     from backend.database.repositories.user_repo import UserRepository  # type: ignore[import]
 
     repo = UserRepository(db)
@@ -74,8 +70,7 @@ async def create_user(
             detail=f"User with email '{body.email}' already exists",
         )
 
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    hashed_password = pwd_context.hash(body.password)
+    hashed_password = bcrypt.hashpw(body.password.encode(), bcrypt.gensalt()).decode()
 
     record = {
         **body.model_dump(exclude={"password"}),
@@ -84,6 +79,12 @@ async def create_user(
     }
     created = await repo.create(record)
     return UserResponse(**created)
+
+
+@router.get("/me", response_model=UserResponse, summary="Get current user profile")
+async def get_me(current_user: CurrentUserDep = ...) -> UserResponse:
+    """Return the profile of the currently authenticated user."""
+    return UserResponse(**current_user)
 
 
 @router.get("/{user_id}", response_model=UserResponse, summary="Get user details")
@@ -151,8 +152,6 @@ async def change_password(
     if str(current_user["id"]) != str(user_id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
-    from passlib.context import CryptContext  # type: ignore[import]
-
     from backend.database.repositories.user_repo import UserRepository  # type: ignore[import]
 
     repo = UserRepository(db)
@@ -160,14 +159,14 @@ async def change_password(
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    if not pwd_context.verify(body.current_password, user.get("hashed_password", "")):
+    existing_hash = (user.get("hashed_password") or "").encode()
+    if not existing_hash or not bcrypt.checkpw(body.current_password.encode(), existing_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Current password is incorrect",
         )
 
-    new_hash = pwd_context.hash(body.new_password)
+    new_hash = bcrypt.hashpw(body.new_password.encode(), bcrypt.gensalt()).decode()
     await repo.update(user_id, {"hashed_password": new_hash})
 
 

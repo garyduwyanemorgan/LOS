@@ -30,6 +30,22 @@ def _get_service(db: DatabaseDep):
     return ReportService(provider)
 
 
+@router.get(
+    "",
+    summary="List available report types for a lagoon",
+)
+async def list_reports(
+    lagoon_id: UUID = Path(...),
+    current_user: CurrentUserDep = ...,
+) -> dict:
+    """Return metadata about available report types (no content generated)."""
+    return {
+        "lagoon_id": str(lagoon_id),
+        "available_types": ["executive", "scientific", "compliance", "operational"],
+        "note": "Use POST to generate a report.",
+    }
+
+
 @router.post(
     "",
     response_model=ReportResponse,

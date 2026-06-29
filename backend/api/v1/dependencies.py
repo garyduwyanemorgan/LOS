@@ -31,7 +31,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Yield an async SQLAlchemy session and close it after the request."""
     # Import here to avoid circular imports at module load time
-    from backend.database.session import AsyncSessionLocal  # type: ignore[import]
+    from backend.database.connection import AsyncSessionLocal  # type: ignore[import]
 
     async with AsyncSessionLocal() as session:
         try:
@@ -49,17 +49,11 @@ DatabaseDep = Annotated[AsyncSession, Depends(get_db)]
 
 # ── Event bus ─────────────────────────────────────────────────────────────────
 
-_event_bus_instance: object | None = None
-
-
 async def get_event_bus() -> object:
-    """Return the application-scoped event bus (Redis-backed)."""
-    global _event_bus_instance
-    if _event_bus_instance is None:
-        from backend.event_bus.redis_bus import RedisEventBus  # type: ignore[import]
+    """Return the application-scoped event bus singleton (Redis Streams)."""
+    from backend.event_bus.bus import event_bus  # type: ignore[import]
 
-        _event_bus_instance = await RedisEventBus.create(settings.REDIS_URL)
-    return _event_bus_instance
+    return event_bus
 
 
 EventBusDep = Annotated[object, Depends(get_event_bus)]
@@ -67,17 +61,25 @@ EventBusDep = Annotated[object, Depends(get_event_bus)]
 
 # ── Shared memory ─────────────────────────────────────────────────────────────
 
-_shared_memory_instance: object | None = None
+_redis_client: object | None = None
 
 
 async def get_shared_memory() -> object:
-    """Return the application-scoped shared memory store (Redis-backed)."""
-    global _shared_memory_instance
-    if _shared_memory_instance is None:
-        from backend.shared_memory.redis_memory import RedisSharedMemory  # type: ignore[import]
+    """Return a SharedMemoryService backed by the application Redis connection."""
+    global _redis_client
+    if _redis_client is None:
+        import redis.asyncio as aioredis  # type: ignore[import]
 
-        _shared_memory_instance = await RedisSharedMemory.create(settings.REDIS_URL)
-    return _shared_memory_instance
+        _redis_client = aioredis.from_url(
+            settings.REDIS_URL,
+            encoding="utf-8",
+            decode_responses=True,
+            max_connections=10,
+        )
+
+    from backend.shared_memory.service import SharedMemoryService  # type: ignore[import]
+
+    return SharedMemoryService(redis_client=_redis_client)
 
 
 SharedMemoryDep = Annotated[object, Depends(get_shared_memory)]
@@ -153,8 +155,8 @@ def require_role(minimum_role: str):  # type: ignore[no-untyped-def]
     """Dependency factory: raise 403 if the user's role is below minimum_role."""
 
     async def _check(current_user: CurrentUserDep) -> dict:
-        user_role = current_user.get("role", "viewer")
-        required_level = ROLE_HIERARCHY.get(minimum_role, 99)
+        user_role = current_user.get("role", "viewer").lower()
+        required_level = ROLE_HIERARCHY.get(minimum_role.lower(), 99)
         user_level = ROLE_HIERARCHY.get(user_role, 0)
         if user_level < required_level:
             raise HTTPException(

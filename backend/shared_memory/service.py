@@ -330,3 +330,34 @@ class SharedMemoryService:
         )
 
         return summary
+
+    # ──────────────────────────────────────────────────────────────────────
+    # Protocol-compatible methods for lagoon_service.SharedMemory
+    # ──────────────────────────────────────────────────────────────────────
+
+    async def get_loop_states(self, lagoon_id: "UUID") -> dict[str, Any]:
+        """Return per-loop states from scientific memory (empty if not yet populated)."""
+        try:
+            return await self.get_scientific_memory(lagoon_id) or {}
+        except Exception:
+            return {}
+
+    async def get_recent_events(self, lagoon_id: "UUID", limit: int = 20) -> list[dict[str, Any]]:
+        """Return recent events from short-term memory (empty if not yet populated)."""
+        try:
+            events = await self.get_short_term(lagoon_id, "recent_events")
+            if isinstance(events, list):
+                return events[:limit]
+        except Exception:
+            pass
+        return []
+
+    async def get_confidence_scores(self, lagoon_id: "UUID") -> dict[str, float]:
+        """Return per-loop confidence scores from short-term memory."""
+        try:
+            scores = await self.get_short_term(lagoon_id, "confidence_scores")
+            if isinstance(scores, dict):
+                return {k: float(v) for k, v in scores.items()}
+        except Exception:
+            pass
+        return {}

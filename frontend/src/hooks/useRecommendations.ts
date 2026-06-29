@@ -26,8 +26,8 @@ export function useApproveRecommendation() {
   const { success, error } = useNotificationStore()
 
   return useMutation({
-    mutationFn: ({ id, notes }: { id: string; notes?: string }) =>
-      recommendationApi.approve(id, notes),
+    mutationFn: ({ lagoonId, id, notes }: { lagoonId: string; id: string; notes?: string }) =>
+      recommendationApi.approve(lagoonId, id, notes),
     onSuccess: (updated) => {
       queryClient.invalidateQueries({ queryKey: ['recommendations'] })
       success('Recommendation approved', `Action scheduled: ${updated.action}`)
@@ -44,8 +44,8 @@ export function useRejectRecommendation() {
   const { success, error } = useNotificationStore()
 
   return useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
-      recommendationApi.reject(id, reason),
+    mutationFn: ({ lagoonId, id, reason }: { lagoonId: string; id: string; reason: string }) =>
+      recommendationApi.reject(lagoonId, id, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['recommendations'] })
       success('Recommendation rejected')

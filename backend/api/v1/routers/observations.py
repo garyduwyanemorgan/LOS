@@ -3,11 +3,15 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Path, Query, status
 
+from backend.api.v1.dependencies import (
+    CurrentUserDep,
+    DatabaseDep,
+    EventBusDep,
+)
 from backend.api.v1.schemas import (
     BulkIngestResponse,
     BulkObservationCreate,
@@ -17,13 +21,6 @@ from backend.api.v1.schemas import (
     StatisticsResponse,
     TimeSeriesResponse,
 )
-
-if TYPE_CHECKING:
-    from backend.api.v1.dependencies import (
-        CurrentUserDep,
-        DatabaseDep,
-        EventBusDep,
-    )
 
 logger = logging.getLogger(__name__)
 

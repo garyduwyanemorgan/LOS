@@ -51,7 +51,7 @@ export const LagoonSelector: React.FC<LagoonSelectorProps> = ({ className }) => 
             <div className="flex flex-col">
               <span className="font-medium">{lagoon.name}</span>
               <span className="text-xs text-slate-500">
-                {lagoon.location.city}, {lagoon.location.country}
+                {lagoon.location?.city ?? ''}{lagoon.location?.country ? `, ${lagoon.location.country}` : ''}
               </span>
             </div>
           </SelectItem>

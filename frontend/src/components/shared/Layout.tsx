@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth.store'
+import { useLagoonStore } from '@/stores/lagoon.store'
 import { LagoonSelector } from './LagoonSelector'
 import { ToastProvider, ToastViewport } from '@/components/ui/toast'
 import { useNotificationStore } from '@/stores/notification.store'
@@ -32,10 +33,10 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: '/', icon: <LayoutDashboard className="h-5 w-5" />, label: 'Executive' },
-  { to: '/operational', icon: <Activity className="h-5 w-5" />, label: 'Operational' },
-  { to: '/science', icon: <FlaskConical className="h-5 w-5" />, label: 'Scientific' },
-  { to: '/predictive', icon: <TrendingUp className="h-5 w-5" />, label: 'Predictive' },
+  { to: '/dashboard/executive', icon: <LayoutDashboard className="h-5 w-5" />, label: 'Executive' },
+  { to: '/dashboard/operational', icon: <Activity className="h-5 w-5" />, label: 'Operational' },
+  { to: '/workspace/scientific', icon: <FlaskConical className="h-5 w-5" />, label: 'Scientific' },
+  { to: '/workspace/predictive', icon: <TrendingUp className="h-5 w-5" />, label: 'Predictive' },
   { to: '/recommendations', icon: <ClipboardList className="h-5 w-5" />, label: 'Recommendations' },
   { to: '/sampling', icon: <Beaker className="h-5 w-5" />, label: 'Sampling' },
   { to: '/reports', icon: <FileText className="h-5 w-5" />, label: 'Reports' },
@@ -48,6 +49,11 @@ export const Layout: React.FC = () => {
   const { user, logout } = useAuthStore()
   const { toasts, removeToast } = useNotificationStore()
   const navigate = useNavigate()
+  const { fetchLagoons, lagoons } = useLagoonStore()
+
+  useEffect(() => {
+    if (!lagoons.length) void fetchLagoons()
+  }, [])
 
   const handleLogout = async () => {
     await logout()
@@ -103,7 +109,7 @@ export const Layout: React.FC = () => {
           <NavLink
             key={item.to}
             to={item.to}
-            end={item.to === '/'}
+            end
             className={({ isActive }) =>
               cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
